@@ -1,60 +1,47 @@
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_core.prompts import PromptTemplate
+from langchain_community.vectorstores import FAISS
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from config import AZURE_AI_ENDPOINT_LLM
-from config import DEPLOYMENT_NAME_LLM
 
-
-llm = ChatOpenAI(
-    model_name=DEPLOYMENT_NAME_LLM,
-    base_url=AZURE_AI_ENDPOINT_LLM,
+llm = ChatOllama(
+    model="llama3",
     temperature=0
 )
 
+# Embeddings
+embeddings = OllamaEmbeddings(model="nomic-embed-text")
 
-def chunk_text(text: str, chunk_size: int = 800, overlap: int = 100):
+
+def build_vector_store(text: str):
     """
-    Split text into overlapping chunks.
+    Split text into chunks and store embeddings in FAISS.
     """
-    chunks = []
-    start = 0
 
-    while start < len(text):
-        end = start + chunk_size
-        chunks.append(text[start:end])
-        start = end - overlap
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800,
+        chunk_overlap=150
+    )
 
-    return chunks
+    chunks = splitter.split_text(text)
 
-
-def select_relevant_chunks(chunks, question, max_chunks=3):
-    """
-    Very simple relevance selection using keyword overlap.
-    """
-    question_words = set(question.lower().split())
-    scored_chunks = []
-
-    for chunk in chunks:
-        chunk_words = set(chunk.lower().split())
-        score = len(question_words & chunk_words)
-        scored_chunks.append((score, chunk))
-
-    scored_chunks.sort(reverse=True, key=lambda x: x[0])
-    return [chunk for score, chunk in scored_chunks[:max_chunks] if score > 0]
+    vector_store = FAISS.from_texts(chunks, embeddings)
+    return vector_store
 
 
 def answer_question(context: str, question: str) -> str:
     """
-    Answers a question strictly using relevant chunks from context.
+    Answers a question using FAISS-based retrieval.
     """
 
-    chunks = chunk_text(context)
-    relevant_chunks = select_relevant_chunks(chunks, question)
+    vector_store = build_vector_store(context)
 
-    if not relevant_chunks:
+    docs = vector_store.similarity_search(question, k=3)
+
+    if not docs:
         return "❌ Answer not found in the provided page content."
 
-    combined_context = "\n\n".join(relevant_chunks)
+    combined_context = "\n\n".join(doc.page_content for doc in docs)
 
     prompt = PromptTemplate(
         input_variables=["context", "question"],

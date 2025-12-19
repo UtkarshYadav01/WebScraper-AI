@@ -1,15 +1,20 @@
 from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
 
 from config import OPENAI_API_KEY
 
 
 # Initialize LLM
-llm = ChatOpenAI(
-    api_key=OPENAI_API_KEY,
-    temperature=0.3
-)
+# llm = ChatOpenAI(
+#     api_key=OPENAI_API_KEY,
+#     temperature=0.3
+# )
 
+llm = ChatOllama(
+    model="llama3",
+    temperature=0
+)
 
 def summarize_text(text: str) -> str:
     """

@@ -7,28 +7,32 @@ from ai import summarize_text
 st.set_page_config(page_title="WebScraper AI", layout="wide")
 
 st.title("🕷️ WebScraper AI")
-st.write("Enter a website URL to scrape and summarize using AI.")
+st.write("🌐 Enter a website URL to scrape and summarize using AI.")
 
-url = st.text_input("Website URL")
+url = st.text_input("🔗 Website URL")
 
-if st.button("Scrape & Summarize"):
+if st.button("🚀 Scrape & Summarize"):
     if not url:
-        st.warning("Please enter a valid URL")
+        st.warning("⚠️ Please enter a valid URL")
     else:
-        with st.spinner("Scraping website..."):
+        with st.spinner("🕷️ Scraping website content..."):
             try:
                 content = scrape_website(url)
+                print("✅ Scraping completed successfully")
             except Exception as e:
-                st.error(f"Error while scraping: {e}")
+                print("❌ Error during scraping:", e)  # console log
+                st.error("❌ Failed to scrape the website. Check console for details.")
                 st.stop()
 
-        with st.spinner("Generating AI summary..."):
+        with st.spinner("🤖 Generating AI summary..."):
             try:
                 summary = summarize_text(content)
+                print("✅ AI summary generated successfully")
             except Exception as e:
-                st.error(f"Error while generating summary: {e}")
+                print("❌ Error during AI summarization:", e)  # console log
+                st.error("❌ Failed to generate AI summary. Check console for details.")
                 st.stop()
 
-        st.success("Done!")
+        st.success("🎉 Done successfully!")
         st.subheader("📌 AI Summary")
         st.write(summary)

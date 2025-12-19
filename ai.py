@@ -12,19 +12,57 @@ llm = ChatOpenAI(
 )
 
 
+def chunk_text(text: str, chunk_size: int = 800, overlap: int = 100):
+    """
+    Split text into overlapping chunks.
+    """
+    chunks = []
+    start = 0
+
+    while start < len(text):
+        end = start + chunk_size
+        chunks.append(text[start:end])
+        start = end - overlap
+
+    return chunks
+
+
+def select_relevant_chunks(chunks, question, max_chunks=3):
+    """
+    Very simple relevance selection using keyword overlap.
+    """
+    question_words = set(question.lower().split())
+    scored_chunks = []
+
+    for chunk in chunks:
+        chunk_words = set(chunk.lower().split())
+        score = len(question_words & chunk_words)
+        scored_chunks.append((score, chunk))
+
+    scored_chunks.sort(reverse=True, key=lambda x: x[0])
+    return [chunk for score, chunk in scored_chunks[:max_chunks] if score > 0]
+
+
 def answer_question(context: str, question: str) -> str:
     """
-    Answers a question strictly based on the given context.
-    If answer is not present in context, says so clearly.
+    Answers a question strictly using relevant chunks from context.
     """
+
+    chunks = chunk_text(context)
+    relevant_chunks = select_relevant_chunks(chunks, question)
+
+    if not relevant_chunks:
+        return "❌ Answer not found in the provided page content."
+
+    combined_context = "\n\n".join(relevant_chunks)
 
     prompt = PromptTemplate(
         input_variables=["context", "question"],
         template="""
 You are an AI assistant.
 
-Answer the question ONLY using the information provided in the context below.
-If the answer is not present in the context, reply exactly:
+Answer the question ONLY using the context below.
+If the answer is not present, reply exactly:
 "❌ Answer not found in the provided page content."
 
 Context:
@@ -39,7 +77,7 @@ Answer:
 
     response = llm.invoke(
         prompt.format(
-            context=context[:6000],  # limit context size
+            context=combined_context,
             question=question
         )
     )

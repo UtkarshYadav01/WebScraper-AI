@@ -3,4 +3,5 @@ import os
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+AZURE_AI_ENDPOINT_LLM = os.getenv("AZURE_AI_ENDPOINT_LLM")
+DEPLOYMENT_NAME_LLM = os.getenv("DEPLOYMENT_NAME_LLM")

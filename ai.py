@@ -1,11 +1,13 @@
-from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
-from config import OPENAI_API_KEY
+from config import AZURE_AI_ENDPOINT_LLM
+from config import DEPLOYMENT_NAME_LLM
 
 
-llm = ChatOllama(
-    model="llama3",
+llm = ChatOpenAI(
+    model_name=DEPLOYMENT_NAME_LLM,
+    base_url=AZURE_AI_ENDPOINT_LLM,
     temperature=0
 )
 

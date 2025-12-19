@@ -1,39 +1,45 @@
 from langchain_openai import ChatOpenAI
-from langchain_ollama import ChatOllama
-from langchain_core.prompts import PromptTemplate
+from langchain.prompts import PromptTemplate
 
 from config import OPENAI_API_KEY
 
 
-# Initialize LLM
-# llm = ChatOpenAI(
-#     api_key=OPENAI_API_KEY,
-#     temperature=0.3
-# )
-
-llm = ChatOllama(
-    model="llama3",
+llm = ChatOpenAI(
+    api_key=OPENAI_API_KEY,
     temperature=0
 )
 
-def summarize_text(text: str) -> str:
+
+def answer_question(context: str, question: str) -> str:
     """
-    Summarizes scraped web content using LLM.
+    Answers a question strictly based on the given context.
+    If answer is not present in context, says so clearly.
     """
 
     prompt = PromptTemplate(
-        input_variables=["content"],
+        input_variables=["context", "question"],
         template="""
-        You are an AI assistant.
-        Summarize the following web content in simple and clear bullet points.
+You are an AI assistant.
 
-        Content:
-        {content}
-        """
+Answer the question ONLY using the information provided in the context below.
+If the answer is not present in the context, reply exactly:
+"❌ Answer not found in the provided page content."
+
+Context:
+{context}
+
+Question:
+{question}
+
+Answer:
+"""
     )
 
     response = llm.invoke(
-        prompt.format(content=text[:6000])  # limit input size
+        prompt.format(
+            context=context[:6000],  # limit context size
+            question=question
+        )
     )
 
     return response.content

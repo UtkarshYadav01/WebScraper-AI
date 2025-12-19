@@ -1,11 +1,11 @@
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
 
 from config import OPENAI_API_KEY
 
 
-llm = ChatOpenAI(
-    api_key=OPENAI_API_KEY,
+llm = ChatOllama(
+    model="llama3",
     temperature=0
 )
 

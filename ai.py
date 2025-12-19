@@ -5,43 +5,39 @@ from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
-# Local LLM (Ollama)
 llm = ChatOllama(
     model="llama3",
     temperature=0
 )
 
-# Local embeddings (Ollama)
 embeddings = OllamaEmbeddings(
     model="nomic-embed-text"
 )
 
 
 def build_vector_store(text: str) -> FAISS:
-    """
-    Build FAISS vector store from scraped page content.
-    """
-
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=800,
         chunk_overlap=150
     )
-
     chunks = splitter.split_text(text)
-
-    vector_store = FAISS.from_texts(chunks, embeddings)
-    return vector_store
+    return FAISS.from_texts(chunks, embeddings)
 
 
-def answer_question(vector_store: FAISS, question: str) -> str:
+def answer_question(vector_store: FAISS, question: str):
     """
-    Answer a question strictly using retrieved page content.
+    Returns:
+    - answer (str)
+    - sources (list[str])
     """
 
     docs = vector_store.similarity_search(question, k=3)
 
     if not docs:
-        return "❌ Answer not found in the provided page content."
+        return (
+            "❌ Answer not found in the provided page content.",
+            []
+        )
 
     context = "\n\n".join(doc.page_content for doc in docs)
 
@@ -65,10 +61,9 @@ Answer:
     )
 
     response = llm.invoke(
-        prompt.format(
-            context=context,
-            question=question
-        )
+        prompt.format(context=context, question=question)
     )
 
-    return response.content
+    sources = [doc.page_content for doc in docs]
+
+    return response.content, sources

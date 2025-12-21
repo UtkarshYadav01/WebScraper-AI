@@ -17,11 +17,11 @@ class GraphState(TypedDict):
     sources: Optional[list]
 
 
-# -------- Node Functions --------
+# -------- Router Decision Function --------
 
-def route_node(state: GraphState):
+def route_decision(state: GraphState) -> str:
     """
-    Decide where to go next based on available state.
+    Decide next step based on current state.
     """
     print("🧭 [Graph] Routing decision...")
 
@@ -32,6 +32,13 @@ def route_node(state: GraphState):
         return "qa"
 
     return "scrape"
+
+
+# -------- Node Functions --------
+
+def route_node(state: GraphState):
+    # Router node MUST return dict
+    return {}
 
 
 def scrape_node(state: GraphState):
@@ -81,7 +88,7 @@ def build_rag_graph():
 
     graph.add_conditional_edges(
         "route",
-        route_node,
+        route_decision,
         {
             "scrape": "scrape",
             "qa": "qa",

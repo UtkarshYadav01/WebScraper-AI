@@ -12,6 +12,7 @@ dependencies = [
     "langchain-ollama>=1.0.1",
     "langchain-openai>=1.1.6",
     "langchain-text-splitters>=1.1.0",
+    "langgraph>=1.0.5",
     "python-dotenv>=1.2.1",
     "requests>=2.32.5",
     "streamlit>=1.52.2",

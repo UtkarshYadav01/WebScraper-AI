@@ -9,7 +9,7 @@ from ai import build_vector_store, answer_question
 # -------- State Definition --------
 
 class GraphState(TypedDict):
-    url: str
+    url: Optional[str]
     question: str
     page_content: Optional[str]
     vector_store: Optional[object]
@@ -18,6 +18,21 @@ class GraphState(TypedDict):
 
 
 # -------- Node Functions --------
+
+def route_node(state: GraphState):
+    """
+    Decide where to go next based on available state.
+    """
+    print("🧭 [Graph] Routing decision...")
+
+    if not state.get("url"):
+        return "error"
+
+    if state.get("vector_store"):
+        return "qa"
+
+    return "scrape"
+
 
 def scrape_node(state: GraphState):
     print("🕷️ [Graph] Scraping page...")
@@ -43,19 +58,40 @@ def qa_node(state: GraphState):
     }
 
 
+def error_node(state: GraphState):
+    print("❌ [Graph] Invalid input state")
+    return {
+        "answer": "❌ Please provide a valid URL before asking questions.",
+        "sources": []
+    }
+
+
 # -------- Graph Builder --------
 
 def build_rag_graph():
     graph = StateGraph(GraphState)
 
+    graph.add_node("route", route_node)
     graph.add_node("scrape", scrape_node)
     graph.add_node("index", index_node)
     graph.add_node("qa", qa_node)
+    graph.add_node("error", error_node)
 
-    graph.set_entry_point("scrape")
+    graph.set_entry_point("route")
+
+    graph.add_conditional_edges(
+        "route",
+        route_node,
+        {
+            "scrape": "scrape",
+            "qa": "qa",
+            "error": "error",
+        }
+    )
 
     graph.add_edge("scrape", "index")
     graph.add_edge("index", "qa")
     graph.add_edge("qa", END)
+    graph.add_edge("error", END)
 
     return graph.compile()

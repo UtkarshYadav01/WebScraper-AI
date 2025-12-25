@@ -15,6 +15,7 @@ class GraphState(TypedDict):
     vector_store: Optional[object]
     answer: Optional[str]
     sources: Optional[list]
+    memory: Optional[list]
 
 
 # -------- Router Decision Function --------
@@ -54,15 +55,27 @@ def index_node(state: GraphState):
 
 
 def qa_node(state: GraphState):
-    print("🤖 [Graph] Answering question using RAG...")
+    print("🤖 [Graph] Answering question using RAG + memory...")
+
+    memory = state.get("memory", [])
+
     answer, sources = answer_question(
-        state["vector_store"],
-        state["question"]
+        vector_store=state["vector_store"],
+        question=state["question"],
+        memory=memory
     )
+
+    memory.append({
+        "question": state["question"],
+        "answer": answer
+    })
+
     return {
         "answer": answer,
-        "sources": sources
+        "sources": sources,
+        "memory": memory
     }
+
 
 
 def error_node(state: GraphState):

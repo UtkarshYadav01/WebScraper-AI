@@ -23,7 +23,7 @@ def build_vector_store(text: str) -> FAISS:
     return FAISS.from_texts(chunks, embeddings)
 
 
-def answer_question(vector_store: FAISS, question: str):
+def answer_question(vector_store: FAISS, question: str, memory: list):
     """
     Returns:
     - answer (str)
@@ -33,21 +33,30 @@ def answer_question(vector_store: FAISS, question: str):
     docs = vector_store.similarity_search(question, k=3)
 
     if not docs:
-        return (
-            "❌ Answer not found in the provided page content.",
-            []
-        )
+        return "❌ Answer not found in the provided page content.", []
 
     context = "\n\n".join(doc.page_content for doc in docs)
 
+    memory_text = ""
+    if memory:
+        memory_text = "\n".join(
+            f"Q: {m['question']}\nA: {m['answer']}"
+            for m in memory[-3:]  # last 3 turns
+        )
+
     prompt = PromptTemplate(
-        input_variables=["context", "question"],
+        input_variables=["context", "memory", "question"],
         template="""
 You are an AI assistant.
 
-Answer the question ONLY using the context below.
-If the answer is not present, reply exactly:
-"❌ Answer not found in the provided page content."
+You MUST follow these rules:
+- Answer ONLY using the provided context
+- Use conversation memory ONLY for continuity
+- If answer is not in context, say:
+  "❌ Answer not found in the provided page content."
+
+Conversation Memory:
+{memory}
 
 Context:
 {context}
@@ -60,7 +69,7 @@ Answer:
     )
 
     response = llm.invoke(
-        prompt.format(context=context, question=question)
+        prompt.format(context=context, memory=memory_text, question=question)
     )
 
     sources = [doc.page_content for doc in docs]

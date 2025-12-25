@@ -27,33 +27,40 @@ def answer_question(vector_store: FAISS, question: str, memory: list):
     """
     Returns:
     - answer (str)
-    - sources (list[str])
+    - sources (list[str]) -> ONLY chunks actually used
     """
 
-    docs = vector_store.similarity_search(question, k=3)
+    # Retrieve more than needed (upper bound)
+    retrieved_docs = vector_store.similarity_search(question, k=15)
 
-    if not docs:
+    if not retrieved_docs:
         return "❌ Answer not found in the provided page content.", []
 
-    context = "\n\n".join(doc.page_content for doc in docs)
+    # Prepare numbered context so LLM can reference chunks
+    numbered_context = []
+    for idx, doc in enumerate(retrieved_docs, 1):
+        numbered_context.append(f"[{idx}] {doc.page_content}")
+
+    context_text = "\n\n".join(numbered_context)
 
     memory_text = ""
     if memory:
         memory_text = "\n".join(
             f"Q: {m['question']}\nA: {m['answer']}"
-            for m in memory[-3:]  # last 3 turns
+            for m in memory[-3:]
         )
 
     prompt = PromptTemplate(
         input_variables=["context", "memory", "question"],
         template="""
-You are an AI assistant.
+You are an AI assistant with strict rules.
 
-You MUST follow these rules:
-- Answer ONLY using the provided context
-- Use conversation memory ONLY for continuity
-- If answer is not in context, say:
+RULES:
+- Answer ONLY using the context below
+- Select ONLY the chunks that were ACTUALLY used to answer
+- If no chunk is relevant, say:
   "❌ Answer not found in the provided page content."
+- Return used chunk numbers as a comma-separated list
 
 Conversation Memory:
 {memory}
@@ -64,14 +71,43 @@ Context:
 Question:
 {question}
 
-Answer:
+Respond in EXACTLY this format:
+
+ANSWER:
+<answer here>
+
+SOURCES:
+<comma separated chunk numbers OR empty>
 """
     )
 
     response = llm.invoke(
-        prompt.format(context=context, memory=memory_text, question=question)
+        prompt.format(
+            context=context_text,
+            memory=memory_text,
+            question=question
+        )
     )
 
-    sources = [doc.page_content for doc in docs]
+    raw = response.content.strip()
 
-    return response.content, sources
+    # ---- Parse LLM response safely ----
+    if "SOURCES:" not in raw:
+        return raw, []
+
+    answer_part, sources_part = raw.split("SOURCES:", 1)
+    answer = answer_part.replace("ANSWER:", "").strip()
+
+    source_ids = [
+        int(x.strip())
+        for x in sources_part.strip().split(",")
+        if x.strip().isdigit()
+    ]
+
+    used_sources = [
+        retrieved_docs[i - 1].page_content
+        for i in source_ids
+        if 0 < i <= len(retrieved_docs)
+    ]
+
+    return answer, used_sources
